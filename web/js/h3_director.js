@@ -644,16 +644,36 @@ function caretBox(editor) {
   return box.height ? box : fallback;
 }
 
-function caretIndex(editor) {
-  const selection = window.getSelection();
-  if (!selection?.rangeCount || !editor.contains(selection.anchorNode)) return serializeScript(editor).length;
-  const range = selection.getRangeAt(0);
-  const probe = range.cloneRange();
+function selectionInside(editor, selection) {
+  const node = selection?.anchorNode;
+  return !!node && (node === editor || editor.contains(node));
+}
+
+function offsetIndex(editor, container, offset) {
+  const probe = document.createRange();
   probe.selectNodeContents(editor);
-  probe.setEnd(range.endContainer, range.endOffset);
+  probe.setEnd(container, offset);
   const box = document.createElement("div");
   box.appendChild(probe.cloneContents());
   return serializeScript(box).length;
+}
+
+function caretIndex(editor) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !selectionInside(editor, selection)) return serializeScript(editor).length;
+  const range = selection.getRangeAt(0);
+  return offsetIndex(editor, range.endContainer, range.endOffset);
+}
+
+function selectionSpan(editor) {
+  const full = serializeScript(editor).length;
+  const selection = window.getSelection();
+  if (!selection?.rangeCount || !selectionInside(editor, selection)) return { start: full, end: full };
+  const range = selection.getRangeAt(0);
+  const end = offsetIndex(editor, range.endContainer, range.endOffset);
+  if (range.collapsed) return { start: end, end };
+  const start = offsetIndex(editor, range.startContainer, range.startOffset);
+  return { start: Math.min(start, end), end: Math.max(start, end) };
 }
 
 function placeCaret(editor, index) {
@@ -1551,11 +1571,11 @@ function bindEditor(node, editor) {
     event.preventDefault();
     node.__h3Active = editor;
     const pasted = event.clipboardData?.getData("text/plain") || "";
-    const caret = caretIndex(editor);
-    const text = String(promptWidget(node)?.value || "");
-    const next = `${text.slice(0, caret)}${pasted}${text.slice(caret)}`;
+    const text = serializeScript(editor);
+    const { start, end } = selectionSpan(editor);
+    const next = `${text.slice(0, start)}${pasted}${text.slice(end)}`;
     setPromptText(node, next);
-    paintScript(node, caret + pasted.length);
+    paintScript(node, start + pasted.length);
     editor.focus();
   });
   editor.addEventListener("copy", (event) => {
