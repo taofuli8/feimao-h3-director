@@ -138,10 +138,14 @@ def inventory(image_count: int, video_count: int, audio_count: int, aspect: str,
     size = f"画面 {width}×{height}，{float(seconds):g} 秒，{frames} 帧"
     if mode == "文生":
         return f"文生视频，不使用参考图、参考视频和参考音频。\n{size}"
-    if mode == "图生":
-        return f"图生视频，用第 1 张图作首帧。\n{size}"
+    if mode in ("图生", "首帧"):
+        return f"首帧视频，用上传的图作首帧。\n{size}"
+    if mode == "尾帧":
+        return f"尾帧视频，用上传的图作尾帧。\n{size}"
     if mode == "首尾帧":
-        return f"首尾帧，第 1 张是首帧，第 2 张是尾帧。\n{size}"
+        return f"首尾帧。有首帧就从首帧开始，有尾帧就收到尾帧；只上传一张时按那一张执行。\n{size}"
+    if mode == "数字人":
+        return f"数字人。首帧和尾帧按上传的那几张锁定，声音由驱动音频带。模型和加速 LoRA、步数跟其它模式共用，单独采样和保存。\n{size}"
     pictures = " ".join(f"<Picture {i}>" for i in range(1, image_count + 1)) or "无"
     videos = " ".join(f"<Video {i}>" for i in range(1, video_count + 1)) or "无"
     audios = " ".join(f"<Audio {i}>" for i in range(1, audio_count + 1)) or "无"

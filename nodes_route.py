@@ -19,7 +19,7 @@ class FeimaoH3Route:
     RETURN_NAMES = ("模型",)
     FUNCTION = "run"
     CATEGORY = "feimao-h3导演台"
-    DESCRIPTION = "按导演台的模式只加载一个模型。多参用参考模型，文生、图生、首尾帧用首尾帧模型。"
+    DESCRIPTION = "按导演台的模式只加载一个模型。多参用参考模型，文生、首帧、尾帧、首尾帧、数字人用首尾帧模型。"
 
     def check_lazy_status(self, 走多参, 多参模型=None, 文生模型=None):
         if bool(走多参):

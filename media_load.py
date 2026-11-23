@@ -28,6 +28,38 @@ def read_items(raw) -> list[dict]:
     return items
 
 
+def read_kept(raw) -> list:
+    """Like read_items, but keep an empty hole so 首帧 and 尾帧 stay in place."""
+    text = str(raw or "").strip() or "[]"
+    try:
+        data = json.loads(text)
+    except Exception as exc:
+        raise ValueError(f"素材数据不是有效 JSON: {exc}") from exc
+    if isinstance(data, dict):
+        data = data.get("items") or data.get("images") or []
+    if not isinstance(data, list):
+        raise ValueError("素材数据必须是数组")
+    kept = []
+    for item in data:
+        if item is None:
+            kept.append(None)
+        elif isinstance(item, dict) and str(item.get("filename") or item.get("abs_path") or "").strip():
+            kept.append(item)
+    while kept and kept[-1] is None:
+        kept.pop()
+    return kept
+
+
+def read_slots(raw, count: int) -> list:
+    """Fixed slots. A missing tail stays empty; a leading hole stays a leading hole."""
+    slots = []
+    for item in read_kept(raw):
+        slots.append(item)
+    while len(slots) < count:
+        slots.append(None)
+    return slots[:count]
+
+
 def resolve_item(item: dict) -> Path | None:
     abs_path = str(item.get("abs_path") or "").strip()
     if abs_path:
@@ -140,6 +172,29 @@ def load_audio(path: Path, max_seconds: float = 30.0) -> dict:
 
     waveform, sample_rate = load(str(path))
     return _trim_audio({"waveform": waveform.unsqueeze(0), "sample_rate": sample_rate}, max_seconds)
+
+
+def load_audio_span(path: Path, start: float, seconds: float, limit: float = 15.0) -> tuple[dict, float]:
+    """Slice one region out of an audio file. The slice never exceeds `limit` seconds."""
+    from comfy_extras.nodes_audio import load
+
+    waveform, sample_rate = load(str(path))
+    rate = int(sample_rate)
+    waveform = waveform.unsqueeze(0)
+    total = waveform.shape[-1] / rate if rate else 0.0
+    begin_at = max(0.0, float(start))
+    if begin_at >= total:
+        begin_at = 0.0
+    room = max(0.0, total - begin_at)
+    take = min(float(limit), max(0.0, float(seconds)), room)
+    if room >= 1.0:
+        take = max(1.0, take)
+    begin = min(waveform.shape[-1], int(begin_at * rate))
+    count = max(1, int(take * rate))
+    clip = waveform[..., begin:min(waveform.shape[-1], begin + count)].clone()
+    if clip.shape[-1] <= 0:
+        raise ValueError("这段音频是空的")
+    return {"waveform": clip, "sample_rate": rate}, clip.shape[-1] / rate
 
 
 def load_video(path: Path, fps: int = 24, max_seconds: float = MAX_VIDEO_SECONDS):

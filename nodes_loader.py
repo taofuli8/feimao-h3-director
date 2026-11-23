@@ -26,7 +26,7 @@ class FeimaoH3Loader:
             "required": {
                 "走多参": ("BOOLEAN", {
                     "default": True,
-                    "tooltip": "接导演台的走多参。打开时加载参考模型，关掉时加载文生、图生、首尾帧用的模型。",
+                    "tooltip": "接导演台的走多参。打开时加载参考模型，关掉时加载文生、首帧、尾帧、首尾帧、数字人用的模型。",
                 }),
                 "多参模型": (_choices("diffusion_models", REF_UNET), {"default": REF_UNET}),
                 "文生模型": (_choices("diffusion_models", FL_UNET), {"default": FL_UNET}),
